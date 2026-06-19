@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    container_name: mercur-app
+
+    network_mode: host
+
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mercur
+      REDIS_URL: redis://localhost:6379

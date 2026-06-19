@@ -1,0 +1,120 @@
+{
+  "customFields": {
+    "title": "Custom Fields",
+    "description": "Manage your custom fields and configurations",
+    "noFields": "No custom fields configured yet"
+  },
+  "energyMarketplace": {
+    "title": "Energy Marketplace",
+    "subtitle": "Tyagi energy marketplace operations overview",
+    "error": {
+      "title": "Unable to load marketplace",
+      "message": "The marketplace overview could not be loaded. Check that you are signed in and the API is running."
+    },
+    "overview": {
+      "model": "Business model",
+      "fulfillment": "Fulfillment owner",
+      "payment": "Payment provider",
+      "region": "Launch region",
+      "currency": "Currency"
+    },
+    "catalog": {
+      "title": "Product catalog",
+      "description": "Energy categories configured for the Meerut launch market.",
+      "columns": {
+        "category": "Category",
+        "buyingModes": "Buying modes",
+        "specs": "Required specs"
+      },
+      "filters": "Customer filters"
+    },
+    "operations": {
+      "title": "Operations",
+      "rfqLifecycle": "RFQ lifecycle",
+      "serviceLifecycle": "Service lifecycle",
+      "fulfillmentStatuses": "Fulfillment statuses",
+      "adminControls": "Admin controls"
+    },
+    "vendorOnboarding": {
+      "title": "Vendor onboarding",
+      "mode": "Approval mode",
+      "documents": "Required documents"
+    }
+  },
+  "energyCatalog": {
+    "title": "Energy Catalog",
+    "description": "Sample launch catalog with {{count}} products for Ahmedabad testing.",
+    "actions": {
+      "create": "Add Product"
+    },
+    "error": {
+      "title": "Unable to load catalog",
+      "message": "The energy catalog could not be loaded."
+    },
+    "empty": {
+      "title": "No products yet",
+      "message": "Add sample products in the API to populate this catalog."
+    },
+    "columns": {
+      "product": "Product",
+      "category": "Category",
+      "brand": "Brand",
+      "vendor": "Vendor",
+      "price": "Price (INR)",
+      "rating": "Rating",
+      "action": "Primary action"
+    },
+    "create": {
+      "title": "Add Product",
+      "description": "Create a new energy product for the Ahmedabad storefront.",
+      "success": "Product created successfully",
+      "imageUploaded": "Image uploaded successfully",
+      "sections": {
+        "basic": "Basic details",
+        "commerce": "Pricing and availability",
+        "image": "Product image"
+      },
+      "fields": {
+        "title": "Product title",
+        "category": "Category",
+        "brand": "Brand",
+        "vendor": "Vendor",
+        "description": "Description",
+        "price": "Price in INR",
+        "useCase": "Use case",
+        "primaryAction": "Primary action",
+        "availability": "Availability",
+        "rating": "Rating",
+        "reviews": "Review count",
+        "warranty": "Warranty (years)",
+        "installation": "Installation available",
+        "image": "Upload image"
+      },
+      "hints": {
+        "price": "Leave empty for quote-only products.",
+        "image": "Images are saved to the storefront and shown on http://localhost:8000.",
+        "imageFormats": "JPG, PNG, or WebP up to 5 MB."
+      }
+    },
+    "detail": {
+      "deleteTitle": "Delete product",
+      "deleteDescription": "Delete {{title}} from the catalog? This cannot be undone.",
+      "deleteSuccess": "Product deleted",
+      "error": {
+        "title": "Product not found",
+        "message": "This sample product is not available in the catalog."
+      },
+      "category": "Category",
+      "price": "Price",
+      "rating": "Rating",
+      "availability": "Availability",
+      "useCase": "Use case",
+      "primaryAction": "Primary action",
+      "buyingModes": "Buying modes",
+      "installation": "Installation available",
+      "warranty": "Warranty",
+      "description": "Description",
+      "specs": "Technical specifications"
+    }
+  }
+}
