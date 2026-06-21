@@ -1,10 +1,97 @@
+x-app-env: &app-env
+  DATABASE_URL: postgres://postgres:postgres@postgres:5432/mercur
+  DATABASE_DRIVER_OPTIONS: '{"connection":{"ssl":false}}'
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: supersecret
+  COOKIE_SECRET: supersecret
+  STORE_CORS: http://localhost:8000,https://docs.medusajs.com
+  ADMIN_CORS: http://localhost:7000,http://localhost:9000
+  VENDOR_CORS: http://localhost:7001
+  AUTH_CORS: http://localhost:7000,http://localhost:7001,http://localhost:9000
+  MERCUR_VENDOR_URL: http://localhost:7001
+
 services:
-  app:
-    build: .
-    container_name: mercur-app
-
-    network_mode: host
-
+  postgres:
+    image: postgres:16
+    container_name: mercur-postgres
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mercur
-      REDIS_URL: redis://localhost:6379
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mercur
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercur"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: mercur-redis
+    restart: unless-stopped
+    ports:
+      - "6389:6379"
+
+  admin:
+    build: .
+    container_name: mercur-admin
+    restart: unless-stopped
+    command: ["sh", "-c", "cd apps/admin && /app/node_modules/.bin/vite --port 7000 --host 0.0.0.0"]
+    ports:
+      - "7000:7000"
+    environment:
+      <<: *app-env
+
+  seller:
+    build: .
+    container_name: mercur-seller
+    restart: unless-stopped
+    command: ["sh", "-c", "cd apps/vendor && /app/node_modules/.bin/vite --port 7001 --host 0.0.0.0"]
+    ports:
+      - "7001:7001"
+    environment:
+      <<: *app-env
+
+  storefront:
+    build: .
+    container_name: mercur-storefront
+    restart: unless-stopped
+    command: ["sh", "-c", "cd apps/storefront && /app/node_modules/.bin/vite --port 8000 --host 0.0.0.0"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      <<: *app-env
+      VITE_API_PROXY_TARGET: http://api:9000
+
+  api:
+    build: .
+    container_name: mercur-api
+    restart: unless-stopped
+    command: ["sh", "-c", "cd packages/api && node_modules/.bin/medusa develop"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      admin:
+        condition: service_started
+      seller:
+        condition: service_started
+    ports:
+      - "9000:9000"
+    environment:
+      <<: *app-env
+      ADMIN_VITE_HOST: admin
+      ADMIN_VITE_PORT: 7000
+      VENDOR_VITE_HOST: seller
+      VENDOR_VITE_PORT: 7001
+
+volumes:
+  postgres_data:

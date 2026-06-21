@@ -1,64 +1,228 @@
-# Mercur Basic Template
+# Ahmed Marketplace (MercurJS)
 
-This template comes configured with the bare minimum to get started building your marketplace with Mercur.
+Multi-vendor marketplace built on [MercurJS](https://docs.mercurjs.com) and [MedusaJS v2](https://medusajs.com).
 
-## Quick Start
+## Docker Setup (Recommended)
 
-To spin up this template locally, follow these steps:
+The project runs as a full Docker Compose stack. Earlier versions used a single container with `network_mode: host` and expected PostgreSQL/Redis on the host machine. The current setup runs **all services in Docker** with proper networking.
 
-### Clone
+### Architecture
 
-If you've already cloned this repo, skip to [Development](#development).
+```
+┌──────────────┐  ┌──────────────┐  ┌──────────────────┐
+│ mercur-admin │  │ mercur-seller│  │ mercur-storefront│
+│   Vite :7000 │  │   Vite :7001 │  │     Vite :8000   │
+└──────┬───────┘  └──────┬───────┘  └────────┬─────────┘
+       │                 │                    │
+       └────────┬────────┘                    │
+                │ vite proxy                  │ API proxy
+         ┌──────▼──────┐               ┌──────▼──────┐
+         │  mercur-api │◄──────────────│  /energy    │
+         │    :9000    │               │  /store     │
+         └──────┬──────┘               └─────────────┘
+                │
+       ┌────────┴────────┐
+┌──────▼──────┐  ┌───────▼──────┐
+│mercur-postgres│ │ mercur-redis │
+│    :5432     │  │    :6379     │
+└─────────────┘  └──────────────┘
+```
 
-### Development
+### Prerequisites
 
-1. First [clone the repo](#clone) if you have not done so already
+- [Docker Engine](https://docs.docker.com/engine/install/) (v24+)
+- [Docker Compose](https://docs.docker.com/compose/install/) v2
+- Git
+- Free host ports: **7000**, **7001**, **8000**, **9000**
+- Optional (host DB tools): **5433** (Postgres), **6389** (Redis)
 
-2. Copy the example environment variables:
+### Step 1 — Clone the repository
 
 ```bash
-cd my-project
+git clone https://github.com/Tyagi-99/ahmed-marketplace.git
+cd ahmed-marketplace
+```
+
+### Step 2 — Build and start all services
+
+```bash
+docker compose up --build -d
+```
+
+First build takes several minutes (downloads images, runs `yarn install`).
+
+### Step 3 — Wait for the API to be ready
+
+```bash
+docker compose logs -f api
+```
+
+Look for: `Server is ready on port: 9000` (usually 30–60 seconds).
+
+Press `Ctrl+C` to stop following logs.
+
+### Step 4 — Verify all containers are running
+
+```bash
+docker compose ps
+```
+
+You should see 6 containers: `mercur-postgres`, `mercur-redis`, `mercur-api`, `mercur-admin`, `mercur-seller`, `mercur-storefront`.
+
+### Step 5 — Open the applications
+
+| Service | URL | Description |
+|---|---|---|
+| **Storefront** | http://localhost:8000 | Customer-facing shop |
+| **Admin** | http://localhost:7000/dashboard | Operator dashboard |
+| **Seller** | http://localhost:7001/seller | Vendor portal |
+| **API** | http://localhost:9000 | Medusa REST API |
+| **API health** | http://localhost:9000/health | Health check |
+| Admin (via API) | http://localhost:9000/dashboard | Proxied admin UI |
+| Seller (via API) | http://localhost:9000/seller | Proxied seller UI |
+
+Follow on-screen instructions to create your first admin user.
+
+### Docker commands reference
+
+```bash
+# Start (detached)
+docker compose up -d
+
+# Rebuild after code changes
+docker compose up --build -d
+
+# View logs for a service
+docker compose logs -f api
+docker compose logs -f admin
+
+# Stop all services
+docker compose down
+
+# Stop and delete database volume (fresh DB)
+docker compose down -v
+
+# Check container status
+docker compose ps
+```
+
+### Environment variables (Docker)
+
+Docker does **not** use `packages/api/.env` (it is gitignored). All config is in `docker-compose.yml` under `x-app-env`:
+
+| Variable | Value (Docker) |
+|---|---|
+| `DATABASE_URL` | `postgres://postgres:postgres@postgres:5432/mercur` |
+| `REDIS_URL` | `redis://redis:6379` |
+| `JWT_SECRET` | `supersecret` (change in production) |
+| `COOKIE_SECRET` | `supersecret` (change in production) |
+| `ADMIN_VITE_HOST` | `admin` (API → admin container) |
+| `VENDOR_VITE_HOST` | `seller` (API → seller container) |
+| `VITE_API_PROXY_TARGET` | `http://api:9000` (storefront → API) |
+
+Host port mappings (for external tools only):
+
+| Container | Host port | Internal port |
+|---|---|---|
+| Postgres | 5433 | 5432 |
+| Redis | 6389 | 6379 |
+
+### Troubleshooting
+
+**"Dashboard not built" at http://localhost:9000/dashboard**
+
+Admin and seller Vite containers are not running. Check:
+
+```bash
+docker compose ps
+docker compose logs admin
+docker compose logs seller
+```
+
+**Port 9000 already in use**
+
+An old `mercur-app` container may still be running:
+
+```bash
+docker stop mercur-app && docker rm mercur-app
+docker compose up -d
+```
+
+**Database connection errors on startup**
+
+Postgres may still be initializing. Wait until healthy:
+
+```bash
+docker compose ps   # mercur-postgres should show (healthy)
+```
+
+**API shows `redisUrl not found`**
+
+Ensure you are on the latest `main` branch — `medusa-config.ts` must include `redisUrl: process.env.REDIS_URL`.
+
+---
+
+## Local Development (without Docker)
+
+For native development with hot reload across all apps:
+
+### Prerequisites
+
+- Node.js 20+
+- Yarn 4 (via Corepack) or Bun
+- PostgreSQL 16 and Redis 7 running locally
+
+### Setup
+
+1. Clone the repo (see above).
+
+2. Copy environment variables:
+
+```bash
 cp packages/api/.env.template packages/api/.env
 ```
 
-3. Update the `.env` file with your database connection string and other required variables:
+3. Edit `packages/api/.env`:
 
-```
-DATABASE_URL=postgres://user:password@localhost:5432/mercur
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/mercur
 REDIS_URL=redis://localhost:6379
 JWT_SECRET=your-super-secret-jwt-key
 COOKIE_SECRET=your-super-secret-cookie-key
 ```
 
-4. Install dependencies and start the dev server:
+4. Install dependencies and start:
 
 ```bash
-bun install
-bun dev
+yarn install
+yarn dev
 ```
 
-5. Open `http://localhost:9000` to access the Medusa backend
-6. Open `http://localhost:7000` to access the admin dashboard
-6. Open `http://localhost:7001` to access the vendor dashboard
+5. Open:
 
-That's it! Follow the on-screen instructions to login and create your first admin user.
+- http://localhost:9000 — API
+- http://localhost:7000/dashboard — Admin
+- http://localhost:7001/seller — Seller
+- http://localhost:8000 — Storefront
+
+---
 
 ## What's Inside
 
-This monorepo includes the following packages and apps:
-
 ### Apps and Packages
 
-- `packages/api` - The Medusa backend with all marketplace functionality
-- `apps/admin` - Admin dashboard customizations
-- `apps/vendor` - Vendor portal customizations
+- `packages/api` — Medusa backend with marketplace functionality
+- `apps/admin` — Admin dashboard (Vite + MercurJS)
+- `apps/vendor` — Vendor/seller portal (Vite + MercurJS)
+- `apps/storefront` — Customer storefront (Vite + React)
 
 ### Project Structure
 
 ```
 ├── apps/
-│   ├── admin/          # Admin dashboard extensions
-│   └── vendor/         # Vendor portal extensions
+│   ├── admin/          # Admin dashboard
+│   ├── vendor/         # Seller portal
+│   └── storefront/     # Customer storefront
 ├── packages/
 │   └── api/            # Medusa backend
 │       ├── src/
@@ -70,14 +234,14 @@ This monorepo includes the following packages and apps:
 │       │   ├── subscribers/ # Event subscribers
 │       │   └── workflows/   # Business workflows
 │       └── medusa-config.ts
-├── blocks.json         # Mercur blocks configuration
+├── Dockerfile          # Shared image for all app services
+├── docker-compose.yml  # Full stack: postgres, redis, api, admin, seller, storefront
+├── blocks.json
 ├── package.json
 └── turbo.json
 ```
 
 ### Utilities
-
-This project has some additional tools already setup for you:
 
 - [TypeScript](https://www.typescriptlang.org/) for static type checking
 - [Turborepo](https://turborepo.dev/) for monorepo management
@@ -85,33 +249,20 @@ This project has some additional tools already setup for you:
 
 ## How It Works
 
-The Mercur basic template is built on top of [Medusa](https://medusajs.com) and is pre-configured for marketplace functionality.
+Built on [Medusa](https://medusajs.com) with pre-configured marketplace functionality via [MercurJS](https://docs.mercurjs.com).
 
-### Modules
-
-Custom modules allow you to extend the core functionality. See the [Modules](https://docs.medusajs.com/learn/fundamentals/modules) docs for details.
-
-### Workflows
-
-Workflows define multi-step business processes. See the [Workflows](https://docs.medusajs.com/learn/fundamentals/workflows) docs for details.
-
-### API Routes
-
-Custom API routes expose HTTP endpoints. See the [API Routes](https://docs.medusajs.com/learn/fundamentals/api-routes) docs for details.
-
-### Links
-
-Links define relationships between modules. See the [Links](https://docs.medusajs.com/learn/fundamentals/links) docs for details.
+- **Modules** — data models and business logic
+- **Workflows** — multi-step business processes
+- **API Routes** — HTTP endpoints for admin, vendor, and storefront
+- **Links** — relationships between modules
 
 ## Adding Blocks
-
-You can extend your project with pre-built blocks using the Mercur CLI:
 
 ```bash
 bunx @mercurjs/cli add block-name
 ```
 
-Configure your block sources in `blocks.json`:
+Configure block sources in `blocks.json`:
 
 ```json
 {
@@ -127,12 +278,10 @@ Configure your block sources in `blocks.json`:
 
 ## Build
 
-To build all apps and packages:
-
 ```bash
-bun run build
+yarn run build
 ```
 
 ## Questions
 
-If you have any issues or questions start a [GitHub discussion](https://github.com/mercurjs/mercur/discussions).
+[GitHub Discussions](https://github.com/mercurjs/mercur/discussions) | [Mercur Docs](https://docs.mercurjs.com)
